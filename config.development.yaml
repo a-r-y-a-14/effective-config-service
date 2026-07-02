@@ -1,0 +1,3 @@
+port: 8566
+debug: true
+log_level: error
