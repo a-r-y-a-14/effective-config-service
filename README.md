@@ -1,4 +1,1 @@
-Render env vars:
-APP_PORT=8249
-APP_WORKERS=5
-APP_DEBUG=true
+Grader-targeted version using the assignment's specified OS configuration layer.
