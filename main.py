@@ -1,7 +1,6 @@
 import os
-from pathlib import Path
-
 import yaml
+from pathlib import Path
 from dotenv import dotenv_values
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,56 +23,53 @@ DEFAULTS = {
     "api_key": "default-secret-000",
 }
 
+MAP = {
+    "APP_PORT": "port",
+    "APP_WORKERS": "workers",
+    "NUM_WORKERS": "workers",
+    "APP_DEBUG": "debug",
+    "APP_LOG_LEVEL": "log_level",
+    "APP_API_KEY": "api_key",
+}
+
 def to_bool(v):
-    if isinstance(v, bool):
-        return v
-    return str(v).strip().lower() in ("true","1","yes","on")
+    return str(v).strip().lower() in {"true","1","yes","on"}
 
-def coerce(key, value):
+def cast(key,val):
     if key in ("port","workers"):
-        return int(value)
-    if key == "debug":
-        return to_bool(value)
-    return str(value)
+        return int(val)
+    if key=="debug":
+        return to_bool(val)
+    return str(val)
 
-def load_config():
+def merge():
     cfg = DEFAULTS.copy()
 
-    y = Path("config.development.yaml")
-    if y.exists():
-        with open(y, "r") as f:
-            data = yaml.safe_load(f) or {}
+    p = Path("config.development.yaml")
+    if p.exists():
+        data = yaml.safe_load(p.read_text()) or {}
         for k,v in data.items():
-            cfg[k] = coerce(k,v)
+            cfg[k] = cast(k,v)
 
-    env_file = dotenv_values(".env")
-    mapping = {
-        "APP_PORT":"port",
-        "APP_WORKERS":"workers",
-        "NUM_WORKERS":"workers",
-        "APP_DEBUG":"debug",
-        "APP_LOG_LEVEL":"log_level",
-        "APP_API_KEY":"api_key",
-    }
+    file_env = dotenv_values(".env")
+    for ek,ck in MAP.items():
+        if ek in file_env and file_env[ek] is not None:
+            cfg[ck] = cast(ck,file_env[ek])
 
-    for env_name,key in mapping.items():
-        if env_name in env_file and env_file[env_name] is not None:
-            cfg[key] = coerce(key, env_file[env_name])
-
-    for env_name,key in mapping.items():
-        if env_name in os.environ:
-            cfg[key] = coerce(key, os.environ[env_name])
+    # explicit OS env override
+    for ek,ck in MAP.items():
+        val = os.getenv(ek)
+        if val is not None:
+            cfg[ck] = cast(ck,val)
 
     return cfg
 
 @app.get("/effective-config")
 def effective_config(set: list[str] = Query(default=[])):
-    cfg = load_config()
-
+    cfg = merge()
     for item in set:
         if "=" in item:
             k,v = item.split("=",1)
-            cfg[k] = coerce(k,v)
-
+            cfg[k] = cast(k,v)
     cfg["api_key"] = "****"
     return cfg

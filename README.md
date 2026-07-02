@@ -1,4 +1,4 @@
-Set Render environment variables:
+Render env vars:
 APP_PORT=8249
 APP_WORKERS=5
 APP_DEBUG=true
